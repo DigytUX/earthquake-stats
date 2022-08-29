@@ -1,4 +1,4 @@
-import React, {useState, useMemo} from 'react'
+import React, {useState, useMemo, useEffect, useCallback} from 'react'
 import './App.css';
 import Map, {
   Marker,
@@ -8,62 +8,61 @@ import Map, {
   ScaleControl,
   GeolocateControl
 } from 'react-map-gl';
-
 import 'mapbox-gl/dist/mapbox-gl.css';
 import axios from 'axios'
 import CITIES from '../src/data/cities.json'
 import Pin from './components/Pin'
 
 function App() {
+  const [loading, isLoading] = useState(true)
   const [popupInfo, setPopupInfo] = useState(null);
   const [data, setData] = useState(null)
+  const MAPBOX_TOKEN = 'pk.eyJ1IjoiY2hyaXN0b3BoZXJjbGVtbW9uczIwMjAiLCJhIjoiY2wzN3JtcHowMHNxczNjb3p6cWUzMXVoMSJ9.UnAjwsNqEL0P53xeRrbjUw'
 
-  const MAPBOX_TOKEN = process.env.REACT_APP_MAPBOX_ACCESS_TOKEN
-
-  const options = {
-    method: 'GET',
-    url: 'https://everyearthquake.p.rapidapi.com/earthquakes',
-    params: {
-      start: '1',
-      count: '100',
-      type: 'earthquake',
-      latitude: '33.962523',
-      longitude: '-118.3706975',
-      radius: '1000',
-      units: 'miles',
-      magnitude: '3',
-      intensity: '1'
-    },
-    headers: {
-      'X-RapidAPI-Key': process.env.REACT_APP_X_RapidAPI_Key,
-      'X-RapidAPI-Host':process.env.REACT_APP_X_RapidAPI_Host
+  const loadEarthquakeData = () => {
+    isLoading(true)
+    const options = {
+      method: 'GET',
+      url: 'https://everyearthquake.p.rapidapi.com/earthquakes',
+      params: {
+        start: '1',
+        count: '100',
+        type: 'earthquake',
+        latitude: '33.962523',
+        longitude: '-118.3706975',
+        radius: '1000',
+        units: 'miles',
+        magnitude: '3',
+        intensity: '1'
+      },
+      headers: {
+        'X-RapidAPI-Key': '0c569bc259msh607acdabc330e72p169f7cjsnfc26f1a401c5',
+        'X-RapidAPI-Host': 'everyearthquake.p.rapidapi.com'
+      }
     }
-  };
-
-  const memoizedValue = useMemo(() => 
-    axios
-    .request(options)
-    .then(function (response) {
-      setData(response.data)
-    })
-    .catch(function (error) {
+    return axios.request(options).then(function (response) {
+      console.log('response.data.data', response.data.data);
+      setData(response.data.data)
+      isLoading(false)
+    }).catch(function (error) {
       console.error(error);
-    }),[options]
-  );
+      isLoading(false)
+    })
+  }
 
-  console.log(',', memoizedValue)
+  useEffect(() => {
+    loadEarthquakeData()
+  }, [])
 
   const pins = useMemo(
-  () => 
-    CITIES.map((city, index) => (
-      <Marker
+    () => 
+      data.map((city, index) => (
+        <Marker
           key={`marker-${index}`}
-          longitude={city.longitude}
-          latitude={city.latitude}
+          longitude={parseInt(city.longitude)}
+          latitude={parseInt(city.latitude)}
           anchor="bottom"
           onClick={e => {
-            // If we let the click event propagates to the map, it will immediately close the popup
-            // with `closeOnClick: true`
             e.originalEvent.stopPropagation();
             setPopupInfo(city);
           }}
@@ -73,26 +72,20 @@ function App() {
       )),
     []
   )
-
- if(data){
+  
+  if(loading) return <p>Loading...</p>
   return (
-    <>
-    <h1>{data && 'We have data!'}</h1>
-      <Map
-        initialViewState={{
-          longitude: -122.4,
-          latitude: 37.8,
-          zoom: 14
-        }}
-        style={{width:'100vw', height:'100vh'}}
-        mapStyle="mapbox://styles/mapbox/dark-v10"
-        mapboxAccessToken={MAPBOX_TOKEN}
-      >
-      {pins}
-      </Map>
-    </>
-  );
- }
+    <Map
+      initialViewState={{
+        longitude: -122.4,
+        latitude: 37.8,
+        zoom: 14
+      }}
+      style={{width:'100vw', height:'100vh'}}
+      mapStyle="mapbox://styles/mapbox/dark-v10"
+      mapboxAccessToken={MAPBOX_TOKEN}
+    >{pins}</Map>
+  )
 }
-
+     
 export default App;
